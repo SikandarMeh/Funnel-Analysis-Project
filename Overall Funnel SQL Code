@@ -1,0 +1,38 @@
+  -- adds the conversion rate calc
+
+  SELECT *, no_transactions/no_visits as conversion_rate
+
+  FROM(  
+
+  -- aggregates the number of times a particular event happen for each date, device category, registered or guest 
+    SELECT date, device_category, registered_or_guest, COUNT(distinct(session_id)) as no_visits, sum(view_item) as no_view_item, 
+      sum(add_to_cart) as no_add_to_cart, sum(purchases) as no_purchases, COUNT(distinct(transaction_id)) as no_transactions
+
+      FROM(
+
+  --converts event name to a numeric representation. New column created that identifies a registered customer or guest 
+      SELECT distinct(s.session_id), s.date, f.device_category, t.transaction_id,
+      CASE WHEN event_name = 'view_item' THEN 1
+      ELSE 0
+      END AS view_item,
+      CASE WHEN event_name = 'add_to_cart' THEN 1
+      ELSE 0
+      END AS add_to_cart,
+      CASE WHEN event_name = 'purchase' THEN 1
+      ELSE 0
+      END AS purchases,
+      CASE WHEN f.user_crm_id IS NOT NULL THEN 'registered'
+      ELSE 'guest'
+      END as registered_or_guest,
+      FROM `prism-2023-c1.Prism_Main.sessions` as s
+      LEFT JOIN `prism-2023-c1.Prism_Main.funnelevents` as f
+      ON s.session_id = f.session_id
+      LEFT JOIN `prism-2023-c1.Prism_Main.transactions` as t
+      ON s.session_id = t.session_id
+      )
+    GROUP BY date, device_category, registered_or_guest
+    ORDER BY date, device_category, registered_or_guest
+  )
+  ;
+
+
